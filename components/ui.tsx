@@ -67,12 +67,19 @@ export function Tabs({ labels, index, onChange, prefix, label, className = '' }:
 export function Dialog({ title, children, onClose, wide = false, drawer = false }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean; drawer?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null); const titleId = useId();
   useEffect(() => {
-    const dialog = ref.current; const oldOverflow = document.body.style.overflow;
+    const dialog = ref.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const oldOverflow = document.body.style.overflow;
     dialog?.showModal(); document.body.style.overflow = 'hidden';
-    return () => { dialog?.close(); document.body.style.overflow = oldOverflow; };
+    return () => {
+      dialog?.close(); document.body.style.overflow = oldOverflow;
+      // React may remove the dialog before effect cleanup, so restore focus explicitly.
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
   }, []);
-  return <dialog ref={ref} className={`modal ${wide ? 'modal-wide' : ''} ${drawer ? 'job-drawer' : ''}`} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose(); }} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className="modal-inner"><div className="modal-heading"><div><span className="mono orange">PHOTOTRACKLY / PREVIEW</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close dialog"><Icon name="close" /></button></div>{children}</div>
+  function close() { ref.current?.close(); onClose(); }
+  return <dialog ref={ref} className={`modal ${wide ? 'modal-wide' : ''} ${drawer ? 'job-drawer' : ''}`} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); close(); }} onClick={event => { if (event.target === event.currentTarget) close(); }}>
+    <div className="modal-inner"><div className="modal-heading"><div><span className="mono orange">PHOTOTRACKLY / PREVIEW</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" type="button" onClick={close} aria-label="Close dialog"><Icon name="close" /></button></div>{children}</div>
   </dialog>;
 }
 export function Toast({ message, onClose }: { message: string; onClose: () => void }) {

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-page-custom-font -- App Router root layout: this stylesheet is global across all routes, with system-font fallbacks. */
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { siteUrl } from '@/lib/site';
