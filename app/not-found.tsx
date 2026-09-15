@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function NotFound() { return <main id="main" className="not-found"><span className="eyebrow">OUT OF FRAME · 404</span><h1>This page isn’t in the picture.</h1><p>Head back to the website or pick up where your sample team left off.</p><div className="button-row"><Link className="button" href="/">Back to PhotoTrackly</Link><Link className="button button-outline" href="/workspace/pipeline">Open the workspace</Link></div></main>; }
