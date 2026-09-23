@@ -3,14 +3,16 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx --test tests/model.test.ts",
+    "test:unit": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

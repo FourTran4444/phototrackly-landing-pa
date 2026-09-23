@@ -6,12 +6,12 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
-  title: { default: 'PhotoTrackly — Every shoot. One workspace.', template: '%s | PhotoTrackly' },
-  description: 'We’re building a connected shoot-to-delivery workspace for real-estate photography and property-media teams. Explore the product concept and join early access.',
-  openGraph: { type: 'website', siteName: 'PhotoTrackly', title: 'Every shoot. One workspace.', description: 'Less chasing. More breathing room. A connected workspace for real-estate media teams — in development.' },
-  twitter: { card: 'summary_large_image', title: 'PhotoTrackly — Every shoot. One workspace.' },
+  title: { default: 'PhotoTrackly — One tool for the whole property media job.', template: '%s | PhotoTrackly' },
+  description: 'One planned workspace for property media orders, scheduling, assignments, files, editing, review, and delivery. Built for US and Australian teams. Join free early access.',
+  openGraph: { type: 'website', siteName: 'PhotoTrackly', title: 'One tool for the whole property media job.', description: 'Fewer lost details. Clearer handoffs. One planned workspace for real estate photography and property media teams.' },
+  twitter: { card: 'summary_large_image', title: 'PhotoTrackly — One tool for the whole property media job.' },
 };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#f8f9ff' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#f7f6f0' };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return <html lang="en"><head>
