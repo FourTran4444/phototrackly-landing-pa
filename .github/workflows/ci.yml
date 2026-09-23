@@ -31,13 +31,14 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
       LEAD_STORAGE: sqlite
-      LEAD_DATA_DIRECTORY: ${{ runner.temp }}/phototrackly-leads
       LEAD_TOKEN_SECRET: 'isolated-ci-only-secret-never-use-in-production'
       DATABASE_URL: 'postgresql://postgres:ci-only-password@localhost:5432/phototrackly_test'
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Prepare isolated lead storage
+        run: echo "LEAD_DATA_DIRECTORY=$RUNNER_TEMP/phototrackly-leads" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
