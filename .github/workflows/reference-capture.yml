@@ -1,0 +1,71 @@
+name: Capture approved UI reference
+on:
+  push:
+    branches: [fix/reference-ui]
+    paths: [.github/workflows/reference-capture.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Capture reference source and rendered screens
+        run: |
+          mkdir -p reference-capture
+          cat > /tmp/inspect-reference.cjs <<'JS'
+          const { chromium } = require(process.cwd() + '/node_modules/playwright');
+          const fs = require('node:fs');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+            page.setDefaultTimeout(15000);
+            const url = 'https://phototrackly-operations.tranvantubk.chatgpt.site/';
+            try {
+              const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 40000 });
+              fs.writeFileSync('reference-capture/response.json', JSON.stringify({ status: response?.status(), url: page.url() }, null, 2));
+              fs.writeFileSync('reference-capture/source.html', await response.text());
+              await page.waitForTimeout(3000);
+              await page.evaluate(async () => { document.documentElement.style.scrollBehavior = 'auto'; for (let y = 0; y < document.body.scrollHeight; y += 700) { window.scrollTo(0, y); await new Promise(r => setTimeout(r, 80)); } window.scrollTo(0, 0); });
+              await page.waitForTimeout(1500);
+              await page.screenshot({ path: 'reference-capture/desktop.png', fullPage: true });
+              fs.writeFileSync('reference-capture/rendered.html', await page.content());
+              const info = await page.evaluate(() => ({
+                title: document.title,
+                text: document.body.innerText,
+                images: Array.from(document.images).map(i => ({src:i.src, currentSrc:i.currentSrc, alt:i.alt, width:i.naturalWidth, height:i.naturalHeight})),
+                styles: Array.from(document.querySelectorAll('style')).map(s => s.textContent),
+                stylesheets: Array.from(document.querySelectorAll('link[rel=stylesheet]')).map(l=>l.href),
+                scripts: Array.from(document.scripts).map(s=>s.src).filter(Boolean),
+                elements: Array.from(document.querySelectorAll('header,nav,section,h1,h2,h3,p,form,button')).map(e=> {const s=getComputedStyle(e),r=e.getBoundingClientRect(); return {tag:e.tagName,class:e.className,id:e.id,text:e.textContent.slice(0,180),rect:{x:r.x,y:r.y,w:r.width,h:r.height},style:{fontFamily:s.fontFamily,fontSize:s.fontSize,fontWeight:s.fontWeight,lineHeight:s.lineHeight,color:s.color,background:s.backgroundColor,padding:s.padding,gap:s.gap,borderRadius:s.borderRadius,maxWidth:s.maxWidth,display:s.display,gridTemplateColumns:s.gridTemplateColumns}}})
+              }));
+              fs.writeFileSync('reference-capture/inspection.json', JSON.stringify(info, null, 2));
+              const assets = [...new Set([...info.images.map(i=>i.currentSrc||i.src), ...info.stylesheets, ...info.scripts])].filter(u=>u.startsWith('https://')).slice(0,30);
+              const manifest=[];
+              for (let n=0;n<assets.length;n++) {
+                try { const r=await page.request.get(assets[n], {timeout:12000}); const b=await r.body(); const type=r.headers()['content-type']||''; const ext=type.includes('image/')?type.split('image/')[1].split(';')[0].replace('jpeg','jpg'):type.includes('css')?'css':type.includes('javascript')?'js':'txt'; if (b.length<8000000) { const file=`asset-${n}.${ext}`; fs.writeFileSync('reference-capture/'+file,b); manifest.push({url:assets[n],file,type,status:r.status(),bytes:b.length}); } } catch(e) { manifest.push({url:assets[n],error:String(e)}); }
+              }
+              fs.writeFileSync('reference-capture/assets.json',JSON.stringify(manifest,null,2));
+              await page.setViewportSize({width:390,height:844});
+              await page.waitForTimeout(500);
+              await page.screenshot({path:'reference-capture/mobile.png',fullPage:true});
+            } catch(e) { fs.writeFileSync('reference-capture/error.txt',String(e)); }
+            await browser.close();
+          })();
+          JS
+          node /tmp/inspect-reference.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phototrackly-reference-capture
+          path: reference-capture/
+          retention-days: 7
