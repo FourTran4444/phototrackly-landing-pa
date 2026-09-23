@@ -13,6 +13,6 @@ export const MEDIA = {
 export function Media({ name, alt, sizes, priority = false, className = '' }: { name: keyof typeof MEDIA; alt: string; sizes: string; priority?: boolean; className?: string }) {
   const [failed, setFailed] = useState(false);
   // Keep descriptions aligned with the replacement photographs, including small board crops.
-  const description = name === 'photographer' ? 'A media professional operating a tripod-mounted camera on an indoor location shoot' : name === 'twilight' ? 'Architectural property photograph of a modern two-story home beside a swimming pool' : alt;
+  const description = name === 'photographer' ? 'A media professional adjusting a camera rig during an on-site shoot' : name === 'twilight' ? 'Architectural property photograph of a modern two-story home beside a swimming pool' : alt;
   return <Image src={failed ? '/photo-placeholder.svg' : MEDIA[name]} alt={failed ? `${description} (illustrative photograph unavailable)` : description} fill sizes={sizes} preload={priority} className={className} onError={() => setFailed(true)} unoptimized={failed} />;
 }
