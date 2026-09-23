@@ -18,7 +18,7 @@ export function Glyph({ name, className = '' }: { name: string; className?: stri
   return <svg className={`pl-icon ${className}`} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] || paths.camera} /></svg>;
 }
 export function Wordmark() {
-  return <Link className="pl-brand" href="/" aria-label="PhotoTrackly home"><span className="pl-brand-symbol"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M5 14 16 5l11 9v13H5V14Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/><circle cx="16" cy="18" r="5" stroke="currentColor" strokeWidth="1.7"/><path d="m14 18 1.5 1.5 3-3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></span><span>Photo<span>Trackly</span></span></Link>;
+  return <Link className="pl-brand rf-brand" href="/" aria-label="PhotoTrackly home"><span className="rf-brandmark" aria-hidden="true">⌂</span><span>photoTrackly</span></Link>;
 }
 export function Kicker({ children, light = false }: { children: ReactNode; light?: boolean }) {
   return <p className={`pl-kicker${light ? ' pl-kicker-light' : ''}`}><span />{children}</p>;

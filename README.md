@@ -68,3 +68,7 @@ NODE_OPTIONS="--import=$PWD/tests/helpers/mock-google.mjs" npm run test:e2e
 ```
 
 GitHub Actions runs types, lint, unit/receiver tests, production build, and desktop/mobile browser tests. Tests execute the actual Apps Script against a simulated Sheets API; they do not claim a live Google integration is authorized or verified. The test-only preload is not imported by application code and refuses to run on Vercel. No database is used in development, production, or CI.
+
+## Owner-approved UI reference
+
+The landing now follows the supplied operations-site UI and uses its five original photographs as local assets. See [reference notes](docs/REFERENCE-UI.md) and `reference-media.json`. Google Sheets remains the only lead destination; no application database is required. Both forms require work email, company and explicit consent. Other context is optional.

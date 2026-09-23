@@ -12,8 +12,8 @@ test('lead validation normalizes data and requires explicit consent', () => {
   const lead = validateLead(valid()); assert.equal(lead.email, 'test@example.com'); assert.equal(lead.company, 'Test Studio');
   for (const bad of [null, [], { ...valid(), consent: false }, { ...valid(), consent: 'true' }, { ...valid(), email: 'bad' }, { ...valid(), website: 'bot' }, { ...valid(), requestId: 'not-an-id' }, { ...valid(), challenge: 'x'.repeat(2001) }]) assert.throws(() => validateLead(bad), LeadValidationError);
 });
-test('full registration requires qualification fields and bounded choices', () => {
-  assert.throws(() => validateLead({ ...valid(), source: 'footer' }), LeadValidationError);
+test('full registration keeps context optional and validates supplied choices', () => {
+  assert.equal(validateLead({ ...valid(), source: 'footer' }).name, '');
   const full = { ...valid(), source: 'footer', name: 'Test Person', role: 'Owner / founder', country: 'Australia', volume: '25–99' };
   assert.equal(validateLead(full).country, 'Australia'); assert.throws(() => validateLead({ ...full, volume: '99999' }), LeadValidationError);
 });

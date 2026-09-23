@@ -18,25 +18,23 @@ async function visit(page: Page, ip: string) {
 }
 const valid = () => ({ requestId: randomUUID(), source: 'hero', email: 'ci@example.com', company: 'CI Studio', consent: true });
 
-test('sample stages, production filters and FAQs work with the keyboard', async ({ page }) => {
+test('sample stages, reference board and FAQs work with the keyboard', async ({ page }) => {
   await visit(page, '192.0.2.10');
   const tabs = page.getByRole('tablist', { name: 'Sample job stages' });
   await tabs.getByRole('tab', { name: /Brief/ }).click();
   await tabs.getByRole('tab', { name: /Brief/ }).press('ArrowRight');
   await expect(tabs.getByRole('tab', { name: /Shoot/ })).toBeFocused();
-  await expect(page.getByRole('tabpanel')).toContainText('Sam');
+  await expect(page.getByRole('tabpanel')).toContainText('Photographer');
   await tabs.getByRole('tab', { name: /Shoot/ }).press('End');
   await expect(tabs.getByRole('tab', { name: /Delivery/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tabpanel')).toContainText('approved');
-  await page.getByRole('group', { name: 'Filter illustrative production board' }).getByRole('button', { name: /Ready for review/ }).click();
-  await expect(page.locator('.pl-board-card')).toHaveCount(2);
-  await expect(page.locator('.pl-board-columns')).toContainText('9 Olive Lane');
-  await page.getByRole('group', { name: 'Filter illustrative production board' }).getByRole('button', { name: /All jobs/ }).click();
-  await expect(page.locator('.pl-board-card')).toHaveCount(6);
-  await page.locator('#questions summary').first().click();
-  await expect(page.locator('#questions details').first()).toContainText('Not yet.');
-  await page.locator('#questions summary').nth(3).click();
-  await expect(page.locator('#questions details').nth(3)).toContainText('Manual assignment is an initial priority');
+  await expect(page.locator('.rf-pv-row')).toHaveCount(3);
+  await expect(page.locator('.rf-product-view')).toContainText('9 Olive Lane');
+  await expect(page.locator('.rf-product-view')).toContainText('Illustrative concept');
+  await expect(page.locator('#faq details').first()).toHaveAttribute('open', '');
+  await expect(page.locator('#faq details').first()).toContainText('It is in development.');
+  await page.locator('#faq summary').nth(3).click();
+  await expect(page.locator('#faq details').nth(3)).toContainText('manual assignment');
 });
 
 test('hero form confirms the Google receiver contract and offers a private removal link', async ({ page }, info) => {
@@ -71,9 +69,10 @@ test('full form stores qualification fields and explicit consent', async ({ page
   await form.getByLabel('Work email').fill('qualified-ci@example.com');
   await form.getByLabel('Company').fill('Qualified CI Studio');
   await form.getByLabel('Your role').selectOption('Operations / coordinator');
+  await form.locator('.rf-team-details summary').click();
   await form.getByLabel('Country').selectOption('Australia');
   await form.getByLabel('Approx. property jobs').selectOption('100–249');
-  await form.getByLabel('Your biggest workflow challenge').fill('Clarifying editing handoffs.');
+  await form.getByLabel('What slows your team down today?').fill('Clarifying editing handoffs.');
   await form.getByRole('checkbox').check();
   const saved = page.waitForResponse(r => r.url().endsWith('/api/early-access') && r.request().method() === 'POST');
   await form.getByRole('button', { name: 'Join early access', exact: true }).click();
@@ -141,7 +140,7 @@ test('navigation, headings, image text and layouts work at small and wide widths
     await page.keyboard.press('Escape');
     await expect(menu).toBeFocused();
     await menu.click();
-    await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link', { name: 'Sample job' }).click();
+    await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link', { name: 'How it works' }).click();
     await expect(menu).toHaveAttribute('aria-expanded', 'false');
   }
   for (const width of [320, 390, 768, 1024, 1440]) {
@@ -153,4 +152,32 @@ test('navigation, headings, image text and layouts work at small and wide widths
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /property media/);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /^http:\/\/localhost:3000\/?$/);
   expect(await page.getByRole('form').count()).toBe(2);
+});
+
+// Both visible forms require only the same two contact fields as the approved reference.
+test('full form accepts essential details without optional qualification', async ({ page }, info) => {
+  await visit(page, info.project.name === 'mobile' ? '192.0.2.71' : '192.0.2.70');
+  const form = page.getByRole('form', { name: 'Early-access registration', exact: true });
+  await form.getByLabel('Work email').fill('optional-context@example.com');
+  await form.getByLabel('Company').fill('Optional Context Test');
+  await form.getByRole('checkbox').check();
+  const saved = page.waitForResponse(r => r.url().endsWith('/api/early-access') && r.request().method() === 'POST');
+  await form.getByRole('button', {name: 'Join early access', exact: true}).click();
+  const response = await saved; expect(response.status()).toBe(200);
+  const receipt = await response.json();
+  expect(JSON.parse(String(readLead(receipt.reference)?.data))).toMatchObject({ name: '', country: '', volume: '', source: 'footer', consent: true });
+});
+
+test('reference typography, section order and all five original photographs are preserved', async ({ page }) => {
+  await visit(page, '192.0.2.80');
+  await expect(page.locator('.pl img')).toHaveCount(5);
+  for (const file of ['interior.webp', 'on-site.webp', 'in-studio.webp', 'interior-2.webp', 'exterior.webp']) {
+    await expect(page.locator(`.pl img[src*="${file}"]`)).toHaveCount(1);
+  }
+  expect(await page.locator('.pl h1').evaluate(el => getComputedStyle(el).fontFamily)).toContain('Manrope');
+  expect(await page.locator('.pl h1 em').evaluate(el => getComputedStyle(el).color)).toBe('rgb(130, 151, 124)');
+  expect(await page.locator('#how').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(24, 39, 44)');
+  await expect(page.locator('#how .rf-workflow-gallery figure')).toHaveCount(2);
+  await expect(page.locator('.rf-pv-metrics')).toContainText('08');
+  expect(await page.locator('.pl main > section').count()).toBe(10);
 });
