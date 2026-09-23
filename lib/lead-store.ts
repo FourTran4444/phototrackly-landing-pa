@@ -21,7 +21,7 @@ export function hashedIp(ip: string) { return createHmac('sha256', secret()).upd
 function prepare(lead: LeadInput): StoredLead {
   return { lead, requestHash: tokenHash(JSON.stringify(lead)), withdrawalHash: tokenHash(withdrawalToken(lead.requestId)), consentVersion: CONSENT_VERSION };
 }
-function useSqlite(): boolean {
+function sqliteEnabled(): boolean {
   if (process.env.LEAD_STORAGE !== 'sqlite') return false;
   // A Vercel function filesystem is not durable. Never silently use it for leads.
   if (process.env.VERCEL) throw new LeadStoreError(503, unavailable);
@@ -29,7 +29,7 @@ function useSqlite(): boolean {
 }
 async function openSqlite() {
   const folder = process.env.LEAD_DATA_DIRECTORY || '';
-  if (!folder || !isAbsolute(folder) || resolve(folder).startsWith(resolve('public') + sep) || resolve(folder) === resolve('public')) throw new LeadStoreError(503, unavailable);
+  if (!folder || !isAbsolute(folder) || resolve(/* turbopackIgnore: true */ folder).startsWith(resolve('public') + sep) || resolve(/* turbopackIgnore: true */ folder) === resolve('public')) throw new LeadStoreError(503, unavailable);
   mkdirSync(folder, { recursive: true, mode: 0o700 });
   const { DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(join(folder, 'early-access.sqlite'));
@@ -81,7 +81,7 @@ async function rpc(name: string, args: object): Promise<unknown> {
 export async function captureLead(lead: LeadInput, ip: string): Promise<{ reference: string; withdrawalToken: string }> {
   const payload = prepare(lead); const ipHash = hashedIp(ip);
   let reference: string;
-  if (useSqlite()) reference = await sqliteCapture(payload, ipHash);
+  if (sqliteEnabled()) reference = await sqliteCapture(payload, ipHash);
   else {
     const result = await rpc('capture_early_access', { p_payload: payload, p_ip_hash: ipHash }) as { reference?: unknown };
     if (result?.reference !== lead.requestId) throw new LeadStoreError(502, unavailable);
@@ -92,7 +92,7 @@ export async function captureLead(lead: LeadInput, ip: string): Promise<{ refere
 export async function withdrawLead(token: string): Promise<void> {
   // Validate configuration even when no matching row exists; no fake success on a disconnected store.
   secret();
-  if (useSqlite()) {
+  if (sqliteEnabled()) {
     const db = await openSqlite();
     try { db.prepare('DELETE FROM leads WHERE withdrawal_hash = ?').run(tokenHash(token)); } finally { db.close(); }
   } else {

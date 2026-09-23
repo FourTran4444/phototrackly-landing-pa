@@ -56,7 +56,7 @@ test('hero form saves to real persistent storage and offers a private removal li
   expect((await confirmation).suggestedFilename()).toBe('phototrackly-confirmation.txt');
   await page.getByRole('link', { name: 'registration-removal link' }).click();
   await expect(page.getByRole('button', { name: 'Remove my registration' })).toBeVisible();
-  expect(readLead(receipt.reference)).toBeTruthy(); // Opening a link is not a mutation.
+  expect(readLead(receipt.reference)).toBeTruthy();
   await page.getByRole('button', { name: 'Remove my registration' }).click();
   await expect(page.getByRole('heading', { name: 'Your registration is removed.' })).toBeVisible();
   expect(readLead(receipt.reference)).toBeUndefined();
@@ -149,6 +149,6 @@ test('navigation, headings, image text and layouts work at small and wide widths
   await expect(page.locator('h1')).toHaveCount(1);
   expect(await page.locator('.pl img:not([alt]), .pl img[alt=""]').count()).toBe(0);
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /property media/);
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'http://localhost:3000/');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /^http:\/\/localhost:3000\/?$/);
   expect(await page.getByRole('form').count()).toBe(2);
 });

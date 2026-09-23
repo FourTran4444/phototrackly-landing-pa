@@ -17,7 +17,7 @@ export function validateLead(value: unknown): LeadInput {
     const v = typeof raw[key] === 'string' ? raw[key].trim() : '';
     if (required && !v) errors[key] = 'This field is required.';
     else if (v.length > max) errors[key] = `Use ${max} characters or fewer.`;
-    else if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v)) errors[key] = 'Please remove unsupported characters.';
+    else if (Array.from(v).some(char => { const code = char.charCodeAt(0); return (code < 32 && ![9, 10, 13].includes(code)) || code === 127; })) errors[key] = 'Please remove unsupported characters.';
     return v;
   };
   const source = raw.source === 'hero' ? 'hero' : 'footer';

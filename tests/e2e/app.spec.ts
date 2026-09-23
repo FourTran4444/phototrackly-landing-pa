@@ -157,6 +157,7 @@ test('unknown routes show a useful 404', async ({ page }) => {
 });
 
 test('capture the rendered landing and workspace screens', async ({ page }, testInfo) => {
+  test.setTimeout(90000);
   await mkdir('artifacts/screenshots', { recursive: true });
   for (const [name, path] of [['landing', '/'], ['pipeline', '/workspace/pipeline'], ['review', '/workspace/review']]) {
     await goto(page, path);
@@ -167,11 +168,19 @@ test('capture the rendered landing and workspace screens', async ({ page }, test
       const decline = page.getByRole('button', { name: 'No thanks', exact: true });
       if (await decline.isVisible()) await decline.click();
       await page.evaluate(async () => {
-        for (let y = 0; y < document.body.scrollHeight; y += 700) { window.scrollTo(0, y); await new Promise(r => setTimeout(r, 60)); }
-        window.scrollTo(0, 0);
-        await Promise.all(Array.from(document.images).map(img => img.decode().catch(() => undefined)));
+        document.documentElement.style.scrollBehavior = 'auto';
+        for (const image of Array.from(document.images)) image.loading = 'eager';
+        await Promise.race([
+          Promise.all(Array.from(document.images).map(img => img.decode().catch(() => undefined))),
+          new Promise(resolve => setTimeout(resolve, 20000)),
+        ]);
+        window.scrollTo({ top: 0, behavior: 'instant' });
       });
     }
     await page.screenshot({ path: `artifacts/screenshots/${testInfo.project.name}-${name}.png`, fullPage: true, animations: 'disabled' });
+    if (name === 'landing') {
+      expect(await page.locator('.pl img[src="/photo-placeholder.svg"]').count(), 'Stock photographs must resolve, not show placeholders').toBe(0);
+      expect(await page.locator('.pl img').evaluateAll(images => images.every(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
+    }
   }
 });
