@@ -12,7 +12,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx --test tests/*.test.ts",
+    "test:unit": "tsx --test tests/*.test.ts tests/*.test.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

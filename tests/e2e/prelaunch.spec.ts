@@ -1,11 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { DatabaseSync } from 'node:sqlite';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 
+// Reads the isolated test double, not a live Google Sheet or a production database.
 function readLead(reference: string) {
-  const db = new DatabaseSync(join(process.env.LEAD_DATA_DIRECTORY!, 'early-access.sqlite'));
-  try { return db.prepare('SELECT data, consent_version FROM leads WHERE id = ?').get(reference); } finally { db.close(); }
+  const rows: string[][] = JSON.parse(readFileSync(process.env.PHOTOTRACKLY_TEST_SHEET_FILE!, 'utf8'));
+  const row = rows.slice(1).find(line => line[15] === reference);
+  if (!row) return undefined;
+  return { consent_version: row[19], data: JSON.stringify({ name: row[2], email: row[3], company: row[4], role: row[6], volume: row[7], challenge: row[9], source: row[10].split(':')[1], country: row[17], consent: row[18] === 'yes' }) };
 }
 async function visit(page: Page, ip: string) {
   await page.setExtraHTTPHeaders({ 'x-forwarded-for': ip });
@@ -37,7 +39,7 @@ test('sample stages, production filters and FAQs work with the keyboard', async 
   await expect(page.locator('#questions details').nth(3)).toContainText('Manual assignment is an initial priority');
 });
 
-test('hero form saves to real persistent storage and offers a private removal link', async ({ page }, info) => {
+test('hero form confirms the Google receiver contract and offers a private removal link', async ({ page }, info) => {
   await visit(page, info.project.name === 'mobile' ? '192.0.2.21' : '192.0.2.20');
   const form = page.getByRole('form', { name: 'Quick early-access registration' });
   await form.getByLabel('Work email').fill('hero-ci@example.com');
