@@ -8,12 +8,3 @@ export function siteUrl(): string {
     return 'http://localhost:3000';
   }
 }
-
-export function registrationConfigured(): boolean {
-  try {
-    const url = new URL(process.env.EARLY_ACCESS_WEBHOOK_URL || '');
-    return url.protocol === 'https:' && !url.username && !url.password;
-  } catch {
-    return false;
-  }
-}

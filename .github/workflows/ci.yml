@@ -13,32 +13,14 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ci-only-password
-          POSTGRES_DB: phototrackly_test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     env:
       CI: 'true'
       NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
-      LEAD_STORAGE: sqlite
-      LEAD_TOKEN_SECRET: 'isolated-ci-only-secret-never-use-in-production'
-      DATABASE_URL: 'postgresql://postgres:ci-only-password@localhost:5432/phototrackly_test'
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Prepare isolated lead storage
-        run: echo "LEAD_DATA_DIRECTORY=$RUNNER_TEMP/phototrackly-leads" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -52,15 +34,9 @@ jobs:
       - name: ESLint
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run lint
-      - name: Domain and persistent lead tests
+      - name: Domain and Google receiver tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:unit
-      - name: PostgreSQL migration and permissions
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'create role anon; create role authenticated; create role service_role;'
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/202609230001_early_access.sql
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/lead-postgres.sql
       - name: Production build
         id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -71,7 +47,12 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Browser and API tests
         if: ${{ !cancelled() && steps.browser.outcome == 'success' }}
-        run: npm run test:e2e
+        run: |
+          export LEAD_WEBHOOK_URL='https://script.google.com/macros/s/phototrackly-test-only/exec'
+          export LEAD_WEBHOOK_SECRET='test-only-google-webhook-secret-never-deploy'
+          export PHOTOTRACKLY_TEST_SHEET_FILE="$RUNNER_TEMP/phototrackly-test-sheet.json"
+          export NODE_OPTIONS="--import=$PWD/tests/helpers/mock-google.mjs"
+          npm run test:e2e
       - name: Prepare source bundle
         if: always()
         run: |
