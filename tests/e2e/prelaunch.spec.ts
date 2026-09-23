@@ -179,5 +179,7 @@ test('reference typography, section order and all five original photographs are 
   expect(await page.locator('#how').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(24, 39, 44)');
   await expect(page.locator('#how .rf-workflow-gallery figure')).toHaveCount(2);
   await expect(page.locator('.rf-pv-metrics')).toContainText('08');
-  expect(await page.locator('.pl main > section').count()).toBe(10);
+  await expect(page.locator('.seo-home-links')).toHaveCount(1);
+  await expect(page.locator('.seo-home-grid a')).toHaveCount(4);
+  expect(await page.locator('.pl main > section').count()).toBe(11);
 });

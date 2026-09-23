@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Glyph, Wordmark } from './primitives';
-const links = [['#how', 'How it works'], ['#features', 'What we’re building'], ['#faq', 'FAQ']];
+const links = [['/#how', 'How it works'], ['/#features', 'What we’re building'], ['/#faq', 'FAQ']];
 export default function Navigation() {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
