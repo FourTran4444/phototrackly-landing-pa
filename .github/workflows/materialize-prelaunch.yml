@@ -1,0 +1,85 @@
+name: Materialize prelaunch source
+on:
+  push:
+    branches: [feat/prelaunch-editorial]
+    paths: [.github/workflows/materialize-prelaunch.yml]
+permissions:
+  contents: write
+jobs:
+  materialize:
+    if: github.ref == 'refs/heads/feat/prelaunch-editorial'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/prelaunch-editorial
+      - name: Retrieve the verified source bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/prelaunch.tar.xz"
+          : > "$archive"
+          for sha in 47042f9dfa15c1440f5035847c9eda6a815bdbef d9e61cf14f8b8d127c259ac33697a725f5496cdd 982afac10bed9ad198e8da406bc345ce87928df4; do
+            gh api "repos/FourTran4444/phototrackly-landing-pa/git/blobs/$sha" --jq .content | base64 --decode >> "$archive"
+          done
+          echo "8daa96d153324f93180bd9efc57804be333cf04c075689d1350e12423998936c  $archive" | sha256sum --check
+          python3 - <<'PY'
+          import os, pathlib, tarfile
+          allowed = set('''
+          .env.example
+          .gitignore
+          README.md
+          app/api/early-access/route.ts
+          app/api/early-access/withdraw/route.ts
+          app/early-access/preferences/page.tsx
+          app/icon.svg
+          app/layout.tsx
+          app/opengraph-image.tsx
+          app/page.tsx
+          app/privacy/page.tsx
+          app/sitemap.ts
+          components/marketing/landing.tsx
+          components/marketing/prelaunch.css
+          components/prelaunch/analytics-consent.tsx
+          components/prelaunch/faq.tsx
+          components/prelaunch/lead-form.tsx
+          components/prelaunch/media.tsx
+          components/prelaunch/navigation.tsx
+          components/prelaunch/preferences.tsx
+          components/prelaunch/primitives.tsx
+          components/prelaunch/production-board.tsx
+          components/prelaunch/sample-job.tsx
+          lib/analytics.ts
+          lib/lead-http.ts
+          lib/lead-schema.ts
+          lib/lead-store.ts
+          next.config.ts
+          package.json
+          supabase/migrations/202609230001_early_access.sql
+          tests/e2e/app.spec.ts
+          tests/e2e/prelaunch.spec.ts
+          tests/lead-postgres.sql
+          tests/lead.test.ts
+          '''.split())
+          with tarfile.open(os.environ['RUNNER_TEMP'] + '/prelaunch.tar.xz', 'r:xz') as archive:
+              members = archive.getmembers()
+              if {m.name for m in members} != allowed or len(members) != len(allowed):
+                  raise SystemExit('Unexpected file manifest')
+              for member in members:
+                  if not member.isfile() or member.size > 200_000 or pathlib.PurePosixPath(member.name).is_absolute() or '..' in pathlib.PurePosixPath(member.name).parts:
+                      raise SystemExit('Unsafe archive entry')
+                  data = archive.extractfile(member).read()
+                  data.decode('utf-8')
+                  target = pathlib.Path(member.name)
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(data)
+          PY
+      - name: Commit source to the feature branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .env.example .gitignore README.md app components lib next.config.ts package.json supabase tests
+          git commit -m 'feat: rebuild prelaunch landing with persistent lead capture'
+          git push origin HEAD:feat/prelaunch-editorial
