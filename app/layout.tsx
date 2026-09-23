@@ -6,6 +6,9 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
+  ...(process.env.VERCEL_ENV === 'preview' ? { robots: { index: false, follow: false } } : {}),
+  ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
+  ...(process.env.BING_SITE_VERIFICATION ? { other: { 'msvalidate.01': process.env.BING_SITE_VERIFICATION } } : {}),
   title: { default: 'PhotoTrackly — One tool for the whole property media job.', template: '%s | PhotoTrackly' },
   description: 'One planned workspace for property media orders, scheduling, assignments, files, editing, review, and delivery. Built for US and Australian teams. Join free early access.',
   openGraph: { type: 'website', siteName: 'PhotoTrackly', title: 'One tool for the whole property media job.', description: 'Fewer lost details. Clearer handoffs. One planned workspace for real estate photography and property media teams.' },
