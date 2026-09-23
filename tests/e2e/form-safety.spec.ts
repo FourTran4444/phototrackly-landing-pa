@@ -3,11 +3,12 @@ import { test, expect } from '@playwright/test';
 test('native fallback does not expose contact details in a URL', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
-  await page.goto('http://localhost:3000/');
+  const rendered = await page.goto('http://localhost:3000/');
+  // Playwright's normalized element text excludes noscript descendants; inspect the server markup instead.
+  expect(await rendered!.text()).toContain('Please enable JavaScript');
   const form = page.getByRole('form', { name: 'Quick early-access registration' });
   await expect(form).toHaveAttribute('method', 'post');
   await expect(form).toHaveAttribute('action', '/api/early-access');
-  await expect(form).toContainText('Please enable JavaScript');
   await form.getByLabel('Work email').fill('native-fallback@example.com');
   await form.getByLabel('Company').fill('Native Fallback Test');
   await form.getByRole('checkbox').check();
