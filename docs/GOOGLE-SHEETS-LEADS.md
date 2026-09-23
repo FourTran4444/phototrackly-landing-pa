@@ -1,49 +1,84 @@
-# Lead collection in Google Drive — no database
+# Google Sheet lead capture + owner email — no database
 
-Destination: [PhotoTrackly Early Access Leads](https://docs.google.com/spreadsheets/d/1TG7qUvW0C8uu9WaGMKCSUTaamjZFdIxkNFJKlRxBl2c/edit), **Leads** tab.
+Destination: [PhotoTrackly Landing Page — Early Access Leads](https://docs.google.com/spreadsheets/d/1Vqoauc6MORXZ8cwlTX7eKHXLfju3zKE-uS7wbwitJkE/edit), **Leads** tab.
 
-The website remains a Next.js landing page on Vercel. Both forms use:
+Owner notification recipient: **tranvantubk@gmail.com**. The older PhotoTrackly CRM spreadsheet is not the destination of this receiver; its existing records are not migrated or modified.
 
-**Browser → `/api/early-access` → Google Apps Script → Google Sheet**
+**Website form → `/api/early-access` → Google Apps Script → save in Sheet → notify owner by email.**
 
-No Supabase, PostgreSQL, SQLite, database migration, or service-account key is needed. The Sheet is the lead list. The ChatGPT Google Drive connection is for operations in this conversation; it does not automatically grant the deployed website access.
+Use both files from `integrations/google-apps-script/`: **Code.gs** and **appsscript.json**. No database, paid email provider, SMTP password, or service-account key is needed. A Git commit does not deploy Google Apps Script or authorize the website.
 
-## One-time Google setup
+## 1. Open the script editor and paste the code
 
-1. Open Google Apps Script under the account with edit access to the Sheet. Create a **dedicated project** for this landing page. There is older intake code in `qrTrackly`; do not replace that deployment while another website still uses its older request format.
-2. Paste `integrations/google-apps-script/Code.gs` into `Code.gs`. In Project Settings enable the manifest file and use the supplied `appsscript.json`. This script requests Sheets access only, not Mail access. The intended Sheet ID is already set in the code.
-3. Add the Script Property `WEBHOOK_SECRET` with a random value of at least 32 characters. Generate it locally, for example:
-   ```sh
-   node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
-   ```
-   Store the value securely; do not paste it into chat or commit it to Git. Keep it stable because it also signs private registration-removal links.
-4. Choose **Deploy → New deployment → Web app**, execute as **Me**, and access **Anyone**. Authorize Google when prompted. This publishes only a secret-protected receiver, not your Sheet. Keep the Sheet's sharing restricted. Workspace policies can prevent anonymous web apps; an administrator may need to permit this deployment.
-5. Copy the resulting `/exec` URL. In the existing Vercel `phototrackly-landing-pa` project, add server-only environment variables:
-   - `LEAD_WEBHOOK_URL`: that Google Apps Script `/exec` URL.
-   - `LEAD_WEBHOOK_SECRET`: the same secret used in Script Properties.
-   Keep `NEXT_PUBLIC_SITE_URL` set to the real origin and `NEXT_PUBLIC_GA_ID=G-0PSP21DKNJ`. Redeploy after changing environment settings.
-6. Submit a clearly labeled test through each form. Confirm its row in the **Leads** tab, including country, source, consent, and consent version. Retry an unchanged request and confirm it does not duplicate the row. Save the receipt; use its private removal link, confirm removal, and verify the associated row disappears.
+Open the new Sheet and choose **Extensions → Apps Script**. In this dedicated project, replace the contents of **Code.gs** with the repository file. Do not overwrite another website's Apps Script project or add a second copy of the receiver.
 
-**Deployment status:** the code and Sheet headers are prepared. The live Apps Script deployment and Vercel environment configuration are not completed by a Git commit or a Drive connector call. Until these are set, the API returns an error, never a fabricated success. No email is sent or promised by this receiver.
+The code already contains:
 
-## Sheet layout and preservation
+```js
+const SHEET_ID = '1Vqoauc6MORXZ8cwlTX7eKHXLfju3zKE-uS7wbwitJkE';
+const NOTIFICATION_EMAIL = 'tranvantubk@gmail.com';
+```
 
-Existing columns A:Q are preserved, including existing campaign fields and `request_id`. New headers R:V are `Country`, `Consent`, `Consent Version`, `request_hash`, and `withdrawal_hash`. These header additions were made through the connected Drive tools on 23 September 2026; no lead rows or other tabs were changed.
+The Leads tab's 22 A:V columns must keep their existing names/order. No extra trigger is needed; the website calls `doPost` directly.
 
-The receiver checks the headers before writing; it fails rather than replacing a mismatched column. The new forms map challenge to **Manual Bottleneck**, volume to **Monthly Orders**, and source to `phototrackly-landing:hero` or `phototrackly-landing:footer`. Fields not collected by the new page remain blank rather than fabricated. Notification status is `not-configured`. The receiver does not write to Events, Prospects, Interviews, Content, Dashboard, Activity, or Feedback.
+## 2. Add the mail permission
 
-## Safeguards and limitations
+Open **Project Settings**, enable **Show "appsscript.json" manifest file in editor**, then return to the editor and replace **appsscript.json** with the included file. It requests only spreadsheet access and `https://www.googleapis.com/auth/script.send_mail`. It does not request access to read your Gmail inbox.
 
-The secret stays on the server and in Script Properties. The server only posts to a Google Apps Script URL; ContentService redirects are read with GET without forwarding contact details or the secret. A valid response must confirm `saved: true` and the matching request ID. A health response, login page, timeout, or HTTP 200 alone is insufficient.
+## 3. Set one shared secret
 
-A script lock serializes receiver writes. Request IDs and hashes prevent retries from adding duplicates or changing an accepted submission. Values beginning with formula characters are escaped before insertion. The Google script rechecks consent and field constraints. Keep the private Sheet restricted to the operators who need it.
+In **Project Settings → Script Properties**, add `WEBHOOK_SECRET` with at least 32 random characters. Generate a value on your own computer, for example:
 
-Google Script Cache provides lightweight per-connection throttling (eight new submissions per hour); it is best effort, not a durable rate limit. Configure Vercel's edge abuse controls for public campaigns. Raw IP addresses are not saved in lead rows; only keyed representations are sent for rate checks. Google service quotas and Workspace policies still apply.
+```sh
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
 
-The removal endpoint deletes only a row matching the hash of its private token, and only after explicit confirmation. It does not erase copies, Sheet revision history, exports, or provider backups. Do not treat hidden columns as access control. Establish appropriate access, retention, and follow-up practices for the private Sheet. Existing registrations from a previous provider are not automatically migrated.
+Keep it private and stable. Never put it in the Sheet, Git, chat, a public environment variable, or a URL. If an existing dedicated deployment is already using a strong secret, preserve it; it signs registration-removal links as well as protecting the webhook.
 
-## Tests
+## 4. Test email and publish
 
-Unit tests exercise the real Apps Script source in a simulated Sheets environment and test the server transport's confirmation and redirect handling. Browser/API tests use a test-only Node preload for the same receiver and inspect an isolated JSON fixture. These are **not** live Google submissions and are never enabled on Vercel. The production code contains no mock-storage fallback.
+Save. Select **sendTestEmail** in the editor's function dropdown and click **Run**. Authorize spreadsheet access and sending email using the Google account that has edit access to this Sheet. This explicitly sends one test notification to `tranvantubk@gmail.com`, with subject **[PhotoTrackly] Email notification test**. Check Inbox and Spam. It does not add a lead row and does not prove the website is connected. Do not run `doPost` manually; it needs a website request.
 
-Official references: [Apps Script web apps](https://developers.google.com/apps-script/guides/web), [ContentService redirects](https://developers.google.com/apps-script/guides/content).
+Choose **Deploy → New deployment → Web app**. Set **Execute as: Me** and **Who has access: Anyone**. Review the Google authorization prompts and deploy. The public receiver still rejects requests without the server-only secret. Keep Sheet sharing restricted. Workspace policies may restrict anonymous web apps.
+
+Copy the **Web app URL ending in `/exec`**, not the Script ID or `/dev` test URL. For an already deployed dedicated script, use **Deploy → Manage deployments → Edit → New version → Deploy**, and authorize the new mail scope. Saving code alone does not update a versioned web app.
+
+## 5. Connect Vercel and test the real form
+
+In the existing `phototrackly-landing-pa` Vercel project, set these server-only environment variables for the intended deployment environment:
+
+```dotenv
+LEAD_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+LEAD_WEBHOOK_SECRET=the-same-private-value-as-WEBHOOK_SECRET
+```
+
+Keep `NEXT_PUBLIC_SITE_URL` set to the actual website origin and `NEXT_PUBLIC_GA_ID=G-0PSP21DKNJ`. Redeploy after changing environment values. Use a separate test receiver/Sheet for independent development rather than sending test traffic to the real lead list.
+
+Submit a clearly labeled registration through each website form. Verify a new row in this Sheet and a notification in the owner's inbox. Retry the same unchanged request and verify that no second row or notification is created. Save its private removal receipt and test removal; confirm the corresponding active Sheet row disappears.
+
+## Notification behavior
+
+The notification contains submitted name, work email, company, role, country, monthly jobs, workflow challenge, form location, consent, time, reference, and the new Sheet link. Optional fields are labeled **Not provided**, not fabricated. It is plain text, with a sanitized subject and a single validated Reply-To mailbox when possible. The recipient is fixed in code; form input cannot change it. Secrets, raw IP addresses, request hashes and removal tokens are excluded. No automatic email is sent to the visitor.
+
+The Sheet write is completed before email is attempted. Column **Q (`notification_status`)** records:
+
+- `sent`: MailApp accepted the send; this does not prove inbox delivery.
+- `failed`: Sending was not confirmed, for example because mail authorization failed.
+- `quota-exceeded`: No daily recipient quota remained; no send was attempted.
+- `pending`: No final status was saved; check the owner's inbox before resending.
+
+Mail or notification-status errors do not turn a saved lead into a failed registration. Retries with an existing request ID never resend email, even after a mail error. There is no automatic mail retry queue. Review non-sent rows and handle follow-up manually; if delivery is uncertain, check the inbox first to avoid duplicates. Google mail quotas still apply and may be shared with other scripts on the same account.
+
+A script lock serializes writes and the notification attempt. The website has a bounded timeout; an ambiguous network timeout can occur after the row was saved. Retrying with the unchanged request ID safely retrieves the existing confirmation.
+
+## Privacy and safety
+
+The server and script recheck consent and field constraints. The public website has no endpoint for reading the Sheet. The request ID and hash prevent duplicate retries or changed accepted payloads. Formula-like cell content is escaped. Google Script Cache supplies lightweight throttling, not a guaranteed durable rate limit; configure hosting edge controls for public campaigns.
+
+The private removal link deletes the matching active Sheet row only. It does not erase the owner's notification email, exports, revision history or provider backups. Keep access restricted and establish retention and follow-up procedures. Do not use the Sheet's hidden columns as access control.
+
+## Verification and activation status
+
+The receiver/email unit tests use the actual Apps Script code with simulated Google Sheet and MailApp services. They do not send real email or prove live authorization. The code and Sheet are prepared; live Apps Script deployment, Google permission approval, Vercel settings and real submission checks must be completed before claiming live capture or notification delivery.
+
+References: [MailApp](https://developers.google.com/apps-script/reference/mail/mail-app), [web apps](https://developers.google.com/apps-script/guides/web), [manifests](https://developers.google.com/apps-script/concepts/manifests), [Google service quotas](https://developers.google.com/apps-script/guides/services/quotas).

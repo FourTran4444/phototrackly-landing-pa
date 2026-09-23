@@ -1,13 +1,15 @@
 /** PhotoTrackly landing-page intake. Deploy as a dedicated web app.
  * Script Properties: WEBHOOK_SECRET (32+ random characters).
  * Keep this Sheet private; only the script owner needs edit access.
- * Existing A:Q columns and other CRM tabs are preserved.
+ * New registrations are saved first, then emailed only to NOTIFICATION_EMAIL.
+ * A mail error must never turn a saved registration into a failed submission.
  */
-const SHEET_ID = '1TG7qUvW0C8uu9WaGMKCSUTaamjZFdIxkNFJKlRxBl2c';
+const SHEET_ID = '1Vqoauc6MORXZ8cwlTX7eKHXLfju3zKE-uS7wbwitJkE';
+const NOTIFICATION_EMAIL = 'tranvantubk@gmail.com';
 const HEADERS = ['Submitted At', 'Intent', 'Name', 'Work Email', 'Company', 'Start Timing', 'Role', 'Monthly Orders', 'Current Tools', 'Manual Bottleneck', 'Source', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'request_id', 'notification_status', 'Country', 'Consent', 'Consent Version', 'request_hash', 'withdrawal_hash'];
 
 function doGet() {
-  return jsonResponse({ ok: true, service: 'PhotoTrackly Google Sheets intake', version: 2 });
+  return jsonResponse({ ok: true, service: 'PhotoTrackly Google Sheets intake', version: 3 });
 }
 function jsonResponse(value) {
   return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON);
@@ -79,14 +81,18 @@ function doPost(event) {
     const hits = Number(cache.get(rateKey) || 0);
     if (hits >= 8) return jsonResponse({ ok: false, error: 'rate_limit' });
     cache.put(rateKey, String(hits + 1), 3600);
+    const submittedAt = new Date().toISOString();
     sheet.appendRow([
-      new Date().toISOString(), 'early-access', safeCell(lead.name), safeCell(lead.email),
+      submittedAt, 'early-access', safeCell(lead.name), safeCell(lead.email),
       safeCell(lead.company), '', safeCell(lead.role), safeCell(lead.volume), '', safeCell(lead.challenge),
-      'phototrackly-landing:' + lead.source, '', '', '', '', lead.requestId, 'not-configured',
+      'phototrackly-landing:' + lead.source, '', '', '', '', lead.requestId, 'pending',
       safeCell(lead.country), 'yes', input.consentVersion, input.requestHash, input.withdrawalHash
     ]);
     SpreadsheetApp.flush();
-    // Confirmation is returned only after the Sheet write. No email is implied.
+    // Keep the lock through the one notification attempt: duplicate requests cannot
+    // resend it, and another receiver execution cannot move/delete this row mid-send.
+    // The lead is already saved; all mail/status failures are isolated below.
+    notifyOwner(sheet, lead, submittedAt);
     return jsonResponse({ ok: true, saved: true, reference: lead.requestId });
   } catch {
     console.error('PhotoTrackly intake failed; no success response issued.');
@@ -94,4 +100,79 @@ function doPost(event) {
   } finally {
     if (locked) lock.releaseLock();
   }
+}
+
+/** Send only to the owner's fixed address, never to an address in the form. */
+function ownerMessage(lead, submittedAt) {
+  const sheetUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit#gid=840735356';
+  const details = [
+    ['Submitted at (UTC)', submittedAt], ['Name', lead.name],
+    ['Work email', lead.email], ['Company', lead.company], ['Role', lead.role],
+    ['Country', lead.country], ['Approximate monthly jobs', lead.volume],
+    ['Biggest workflow challenge', lead.challenge],
+    ['Form', lead.source === 'hero' ? 'Hero signup' : 'Final signup'],
+    ['Contact consent', 'Yes'], ['Registration reference', lead.requestId]
+  ];
+  const message = {
+    to: NOTIFICATION_EMAIL,
+    name: 'PhotoTrackly',
+    // Form values may contain newlines; never allow them into a mail header.
+    subject: '[PhotoTrackly] New early-access lead: ' + String(lead.company).replace(/[\r\n\t]/g, ' ').slice(0, 120),
+    body: 'A new early-access registration has been saved in your Google Sheet.\n\n' +
+      details.map(item => item[0] + ': ' + (item[1] || 'Not provided')).join('\n') +
+      '\n\nOpen the lead sheet:\n' + sheetUrl +
+      '\n\nThis notification is for the PhotoTrackly owner. No automatic email was sent to the visitor.'
+  };
+  // Reply goes to one validated mailbox. Unusual addresses are shown in the body
+  // but never used as Reply-To; submitted fields cannot add recipients or headers.
+  if (/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(lead.email)) message.replyTo = lead.email;
+  return message;
+}
+
+function notifyOwner(sheet, lead, submittedAt) {
+  let status = 'pending';
+  try {
+    if (MailApp.getRemainingDailyQuota() < 1) {
+      status = 'quota-exceeded';
+    } else {
+      MailApp.sendEmail(ownerMessage(lead, submittedAt));
+      // "sent" means MailApp accepted the send; it is not an inbox delivery receipt.
+      status = 'sent';
+    }
+  } catch {
+    status = 'failed';
+    console.error('PhotoTrackly owner notification not confirmed; the lead remains saved.');
+  }
+  try {
+    // Locate by stable request ID rather than a row number that an operator may sort.
+    const found = findRow(sheet, 16, lead.requestId);
+    if (found) {
+      sheet.getRange(found.getRow(), 17).setValue(status);
+      SpreadsheetApp.flush();
+    }
+  } catch {
+    // Do not retry here: MailApp may already have sent it. No private data in logs.
+    console.error('PhotoTrackly mail status update failed; check the owner inbox before resending.');
+  }
+}
+
+/** Run manually in the Apps Script editor to authorize and send one test email.
+ * Does not add a lead, bypass the public webhook, or install a trigger.
+ */
+function sendTestEmail() {
+  const secret = PropertiesService.getScriptProperties().getProperty('WEBHOOK_SECRET');
+  if (!secret || secret.length < 32) throw new Error('Set WEBHOOK_SECRET in Script Properties first (32+ random characters).');
+  leadsSheet();
+  if (MailApp.getRemainingDailyQuota() < 1) throw new Error('Google mail quota is exhausted. Try after it resets.');
+  MailApp.sendEmail({
+    to: NOTIFICATION_EMAIL,
+    name: 'PhotoTrackly',
+    subject: '[PhotoTrackly] Email notification test',
+    body: 'PhotoTrackly can access the new lead sheet and submit an owner notification.\n\n' +
+      'Recipient: ' + NOTIFICATION_EMAIL + '\n' +
+      'Sheet: https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit\n\n' +
+      'No lead row was added. This test does not verify the website connection. ' +
+      'After deployment and Vercel configuration, submit a labeled test through the website and check both the sheet and inbox.'
+  });
+  console.log('Test notification submitted to MailApp. Check the owner inbox and Spam folder.');
 }

@@ -6,7 +6,7 @@ PhotoTrackly is in development. Registration is free, requires no payment or man
 
 ## Lead destination
 
-[PhotoTrackly Early Access Leads](https://docs.google.com/spreadsheets/d/1TG7qUvW0C8uu9WaGMKCSUTaamjZFdIxkNFJKlRxBl2c/edit), **Leads** tab.
+[PhotoTrackly Landing Page — Early Access Leads](https://docs.google.com/spreadsheets/d/1Vqoauc6MORXZ8cwlTX7eKHXLfju3zKE-uS7wbwitJkE/edit), **Leads** tab.
 
 Both forms POST to `/api/early-access`; the server validates the request and forwards it to a secret-protected Google Apps Script receiver. The receiver writes a row in the private Sheet and confirms it. No browser-only drafts or fabricated successes are used.
 
@@ -32,7 +32,7 @@ The receiver uses a lock and Sheet request IDs to prevent unchanged retries from
 
 Each success provides a downloadable confirmation with a private removal link. Visiting the link alone does not remove the registration; the visitor must confirm. Removal deletes its associated row from the active Sheet, not Google revision history, exports, or backups. The removal page is no-index, no-referrer, and has no analytics.
 
-No email delivery is configured or claimed. Invitations, follow-up, retention, and access reviews remain operator responsibilities. Do not enter real customer data in illustrative workspace previews.
+The receiver attempts one owner notification to `tranvantubk@gmail.com` after each new lead is saved. Mail failures do not fail registration; `notification_status` tracks `pending`, `sent`, `failed`, or `quota-exceeded`. `sent` means accepted by MailApp, not confirmed inbox delivery. Existing request IDs do not resend notifications. Customer confirmation emails are not sent. Authorize the new send-mail permission and publish a new Apps Script version before use. Invitations, follow-up, retention, and access reviews remain operator responsibilities. Do not enter real customer data in illustrative workspace previews.
 
 ## Conversion measurement
 

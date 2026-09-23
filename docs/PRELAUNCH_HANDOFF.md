@@ -4,7 +4,7 @@ The editorial redesign has been merged into the repository. This follow-up remov
 
 ## Lead collection
 
-Use **[PhotoTrackly Early Access Leads](https://docs.google.com/spreadsheets/d/1TG7qUvW0C8uu9WaGMKCSUTaamjZFdIxkNFJKlRxBl2c/edit)** in Google Drive. Both forms use a server-side Google Apps Script receiver. Follow [GOOGLE-SHEETS-LEADS.md](GOOGLE-SHEETS-LEADS.md).
+Use **[PhotoTrackly Landing Page — Early Access Leads](https://docs.google.com/spreadsheets/d/1Vqoauc6MORXZ8cwlTX7eKHXLfju3zKE-uS7wbwitJkE/edit)** in Google Drive. Both forms use a server-side Google Apps Script receiver. Follow [GOOGLE-SHEETS-LEADS.md](GOOGLE-SHEETS-LEADS.md).
 
 Only `LEAD_WEBHOOK_URL` and `LEAD_WEBHOOK_SECRET` are needed for collection. The obsolete database adapters, migration, and database CI service have been removed. Remove obsolete database environment variables from Vercel when activating the new receiver. Keep server secrets out of public environment variables, Git, and chat.
 
@@ -18,4 +18,4 @@ Replacement on-site camera photograph: Gordon Cowie, Unsplash, https://unsplash.
 
 ## Analytics and operations
 
-GA4 loads only after optional analytics consent. `generate_lead` fires only after a confirmed Google Sheet write. The Sheet is the registration source of truth. Confirmation-email delivery is not configured and is not claimed. Follow-up, private-sheet permissions, retention, and access review remain operator responsibilities.
+GA4 loads only after optional analytics consent. `generate_lead` fires only after a confirmed Google Sheet write. The Sheet is the registration source of truth. Owner notifications to `tranvantubk@gmail.com` are implemented, but require the updated Apps Script deployment and mail authorization. Customer confirmation emails are not sent. Row removal does not remove owner notification emails. Follow-up, private-sheet permissions, retention, and access review remain operator responsibilities.
