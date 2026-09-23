@@ -9,3 +9,8 @@ playwright-report/
 test-results/
 artifacts/
 .DS_Store
+# Registration data must never be committed or shipped as a public asset.
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.private-data/

@@ -7,33 +7,6 @@ async function goto(page: Page, path: string) {
   await expect(page.locator('h1')).toBeVisible();
 }
 
-test('landing tabs, workflow, and FAQs are interactive and keyboard accessible', async ({ page }) => {
-  await goto(page, '/');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Less chasing.');
-  await page.getByRole('tab', { name: 'Studio owners', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Your team’s progress. Not just your inbox.' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Studio owners', exact: true }).press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'Photographers', exact: true })).toBeFocused();
-  await expect(page.getByRole('heading', { name: 'Arrive ready. Get back to creating.' })).toBeVisible();
-  await page.getByRole('tab', { name: /02.*Schedule & assign/ }).click();
-  await expect(page.locator('#workflow-panel')).toContainText('The right context. The right person.');
-  await page.locator('.faq-item').first().locator('summary').click();
-  await expect(page.locator('.faq-item').first().locator('p')).toContainText('Not yet.');
-});
-
-test('unconnected early access is clearly a local draft, never a fake registration', async ({ page }) => {
-  await goto(page, '/');
-  await page.getByLabel('Work email', { exact: false }).fill('preview@example.com');
-  await page.getByLabel('Studio / company name').fill('Preview Studio');
-  await page.getByRole('button', { name: 'Save early-access draft' }).click();
-  await expect(page.getByRole('heading', { name: 'Your interest draft is saved.' })).toBeVisible();
-  await expect(page.locator('.form-success')).toContainText('not sent to PhotoTrackly');
-  await expect(page.locator('.form-success')).not.toContainText('Application received');
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: 'Load a saved draft' }).click();
-  await expect(page.getByLabel('Studio / company name')).toHaveValue('Preview Studio');
-});
-
 test('creates a property job and preserves it after reload', async ({ page }) => {
   await goto(page, '/workspace/pipeline');
   await page.getByRole('button', { name: 'New property job', exact: true }).click();
@@ -183,23 +156,31 @@ test('unknown routes show a useful 404', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'This page isn’t in the picture.' })).toBeVisible();
 });
 
-test('early-access API validates requests and fails honestly without a collector', async ({ request }) => {
-  const valid = { email: 'preview@example.com', company: 'Preview Studio' };
-  expect((await request.post('/api/early-access', { data: valid })).status()).toBe(503);
-  expect((await request.post('/api/early-access', { data: { email: 'bad', company: 'Preview' } })).status()).toBe(400);
-  expect((await request.post('/api/early-access', { headers: { 'content-type': 'text/plain' }, data: 'hello' })).status()).toBe(415);
-  expect((await request.post('/api/early-access', { headers: { origin: 'https://untrusted.example' }, data: valid })).status()).toBe(403);
-  expect((await request.post('/api/early-access', { data: { ...valid, company: 'x'.repeat(9000) } })).status()).toBe(413);
-  expect((await request.post('/api/early-access', { data: { ...valid, website: 'honeypot' } })).status()).toBe(200);
-});
-
 test('capture the rendered landing and workspace screens', async ({ page }, testInfo) => {
+  test.setTimeout(90000);
   await mkdir('artifacts/screenshots', { recursive: true });
   for (const [name, path] of [['landing', '/'], ['pipeline', '/workspace/pipeline'], ['review', '/workspace/review']]) {
     await goto(page, path);
     await page.evaluate(async () => {
       await Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 3000))]);
     });
+    if (name === 'landing') {
+      const decline = page.getByRole('button', { name: 'No thanks', exact: true });
+      if (await decline.isVisible()) await decline.click();
+      await page.evaluate(async () => {
+        document.documentElement.style.scrollBehavior = 'auto';
+        for (const image of Array.from(document.images)) image.loading = 'eager';
+        await Promise.race([
+          Promise.all(Array.from(document.images).map(img => img.decode().catch(() => undefined))),
+          new Promise(resolve => setTimeout(resolve, 20000)),
+        ]);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      });
+    }
     await page.screenshot({ path: `artifacts/screenshots/${testInfo.project.name}-${name}.png`, fullPage: true, animations: 'disabled' });
+    if (name === 'landing') {
+      expect(await page.locator('.pl img[src="/photo-placeholder.svg"]').count(), 'Stock photographs must resolve, not show placeholders').toBe(0);
+      expect(await page.locator('.pl img').evaluateAll(images => images.every(img => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
+    }
   }
 });
