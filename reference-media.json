@@ -1,0 +1,51 @@
+{
+  "reference": "https://phototrackly-operations.tranvantubk.chatgpt.site/",
+  "retrievedAt": "2026-09-23",
+  "images": [
+    {
+      "file": "public/images/reference/interior.webp",
+      "source": "https://phototrackly-operations.tranvantubk.chatgpt.site/interior.webp",
+      "sha256": "d33a62f8fd4e951a8021c3eef0c409c77d380a9e9b2d654023456e681071a9e0",
+      "bytes": 293144,
+      "alt": "Sunlit residential interior representing property media work",
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "public/images/reference/on-site.webp",
+      "source": "https://phototrackly-operations.tranvantubk.chatgpt.site/on-site.webp",
+      "sha256": "cb96782edd2a8dd1002626130bcffee8ade7a814b8a93116e1d1899aaf10dd2a",
+      "bytes": 134312,
+      "alt": "Property photographer preparing a camera inside a home",
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "public/images/reference/in-studio.webp",
+      "source": "https://phototrackly-operations.tranvantubk.chatgpt.site/in-studio.webp",
+      "sha256": "719b6bd2871b988ce40f2e25707a05dd9490ae76d3fb44f88f4c582c24b2ab71",
+      "bytes": 159346,
+      "alt": "Property media editor reviewing residential photography",
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "public/images/reference/interior-2.webp",
+      "source": "https://phototrackly-operations.tranvantubk.chatgpt.site/interior-2.webp",
+      "sha256": "728c7087f4b6e952cd9ee7365ecb50bea73c5387506377abe6b7c7d7eb5d1c69",
+      "bytes": 259228,
+      "alt": "Bright coastal home interior, representing real estate media work",
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "public/images/reference/exterior.webp",
+      "source": "https://phototrackly-operations.tranvantubk.chatgpt.site/exterior.webp",
+      "sha256": "8280d155f2a5098ae9a9f1789fb42d5d5aefc0d7eeef20c809482d26c26f7929",
+      "bytes": 250236,
+      "alt": "Contemporary home photographed at dusk",
+      "width": 1536,
+      "height": 1024
+    }
+  ]
+}

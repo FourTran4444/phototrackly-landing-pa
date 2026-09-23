@@ -24,7 +24,6 @@ function validateInput(input) {
   const limits = { email: 254, company: 160, name: 100, role: 50, country: 50, volume: 50, challenge: 2000 };
   if (Object.keys(limits).some(key => typeof lead[key] !== 'string' || lead[key].length > limits[key] || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(lead[key]))) return false;
   if (!lead.company.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email)) return false;
-  if (lead.source === 'footer' && ['name', 'role', 'country', 'volume'].some(key => !lead[key].trim())) return false;
   const choices = {
     role: ['Owner / founder', 'Operations / coordinator', 'Photographer', 'Editor / production', 'Other'],
     country: ['United States', 'Australia', 'Other'],

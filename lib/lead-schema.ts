@@ -27,10 +27,10 @@ export function validateLead(value: unknown): LeadInput {
   const email = text('email', 254, true).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errors.email = 'Enter a valid work email address.';
   const company = text('company', 160, true);
-  const name = text('name', 100, source === 'footer');
-  const role = text('role', 50, source === 'footer');
-  const country = text('country', 50, source === 'footer');
-  const volume = text('volume', 50, source === 'footer');
+  const name = text('name', 100);
+  const role = text('role', 50);
+  const country = text('country', 50);
+  const volume = text('volume', 50);
   const challenge = text('challenge', 2000);
   if (role && !ROLES.includes(role as typeof ROLES[number])) errors.role = 'Choose a role from the list.';
   if (country && !COUNTRIES.includes(country as typeof COUNTRIES[number])) errors.country = 'Choose a country from the list.';
