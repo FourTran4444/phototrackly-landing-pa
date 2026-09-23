@@ -1,0 +1,88 @@
+name: Apply approved reference UI
+on:
+  push:
+    branches: [fix/reference-ui]
+    paths: [.github/workflows/reference-apply.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/fix/reference-ui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/reference-ui
+      - name: Import reviewed source and byte-verified original images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/reference.tar.xz"
+          : > "$archive"
+          for sha in c0817c785722711509f4845bc747bb7caf068cc8 a4acd92c5b30181c83ff2cc5145585b04647603a 544e69021ecb881715a59b9a6920edcab430080a; do
+            gh api "repos/FourTran4444/phototrackly-landing-pa/git/blobs/$sha" --jq .content | base64 --decode >> "$archive"
+          done
+          echo "7b6cc8ab7d1ba8f195b796ce3825324473140a70d8454737ad59abe799f78b0e  $archive" | sha256sum --check
+          python3 - <<'PY'
+          import os, pathlib, tarfile, json, hashlib, urllib.request
+          allowed = set('''
+          README.md
+          app/layout.tsx
+          app/privacy/page.tsx
+          components/marketing/landing.tsx
+          components/marketing/prelaunch.css
+          components/prelaunch/faq.tsx
+          components/prelaunch/lead-form.tsx
+          components/prelaunch/media.tsx
+          components/prelaunch/navigation.tsx
+          components/prelaunch/primitives.tsx
+          components/prelaunch/production-board.tsx
+          components/prelaunch/sample-job.tsx
+          lib/lead-schema.ts
+          integrations/google-apps-script/Code.gs
+          tests/lead.test.ts
+          tests/e2e/prelaunch.spec.ts
+          tests/reference-media.test.ts
+          reference-media.json
+          docs/REFERENCE-UI.md
+          '''.split())
+          with tarfile.open(os.environ['RUNNER_TEMP'] + '/reference.tar.xz', 'r:xz') as archive:
+              members = archive.getmembers()
+              if {m.name for m in members} != allowed or len(members) != len(allowed):
+                  raise SystemExit('Unexpected manifest')
+              for m in members:
+                  if not m.isfile() or m.size > 100000 or pathlib.PurePosixPath(m.name).is_absolute() or '..' in pathlib.PurePosixPath(m.name).parts:
+                      raise SystemExit('Unsafe archive entry')
+                  data = archive.extractfile(m).read()
+                  data.decode('utf-8')
+                  target = pathlib.Path(m.name)
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(data)
+          images = json.loads(pathlib.Path('reference-media.json').read_text())['images']
+          names = {'interior.webp', 'on-site.webp', 'in-studio.webp', 'interior-2.webp', 'exterior.webp'}
+          if len(images) != 5: raise SystemExit('Unexpected images')
+          for image in images:
+              target = pathlib.Path(image['file'])
+              if target.parent.as_posix() != 'public/images/reference' or target.name not in names:
+                  raise SystemExit('Unexpected image path')
+              if image['source'] != 'https://phototrackly-operations.tranvantubk.chatgpt.site/' + target.name:
+                  raise SystemExit('Unexpected source')
+              with urllib.request.urlopen(image['source'], timeout=25) as response:
+                  data = response.read(2000000)
+              if len(data) != image['bytes'] or hashlib.sha256(data).hexdigest() != image['sha256']:
+                  raise SystemExit('Original image changed; review required')
+              if data[:4] != b'RIFF' or data[8:12] != b'WEBP': raise SystemExit('Invalid WebP')
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(data)
+          PY
+      - name: Commit only the reference implementation
+        run: |
+          set -euo pipefail
+          rm .github/workflows/reference-capture.yml .github/workflows/reference-apply.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: follow approved PhotoTrackly UI and reuse original imagery'
+          git push origin HEAD:fix/reference-ui
