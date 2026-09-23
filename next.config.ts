@@ -5,6 +5,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
+    qualities: [75, 85],
     remotePatterns: [
       new URL('https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?fit=crop&w=1800&q=85'),
       new URL('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?fit=crop&w=1800&q=85'),
